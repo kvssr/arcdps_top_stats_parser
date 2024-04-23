@@ -14,22 +14,102 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-stats_to_compute = ['dmg', 'rips', 'cleanses', 'heal', 'dist', 'stab', 'prot', 'aegis', 'might', 'fury', 'barrier', 'dmg_taken', 'deaths']
+# Note that if you want to know heal_from_regen, you also have to compute hits_from_regen
+
+# possible log levels: "info", "warning", "debug"
+# "info" gives information about the current status of the program
+# "warning" gives additional information about things that could have gone wrong, but don't necessarily mean the program can't deal with the data (e.g., some players might not be running the healing addon)
+# "debug" gives more detailed information about the state of the program and is usually only needed for debugging
+log_level = "info" 
+
+stats_to_compute = ['dmg_total', 'dmg_players', 'dmg_other',
+                    'spike_dmg', 'kills', 'downs', 'down_contrib',
+                    'strips', 'interrupts', 'might', 'fury',
+                    'heal_total', 'heal_players', 'heal_other',
+                    'barrier', 'cleanses', 'stab', 'prot', 'aegis',
+                    'resist', 'resolution', 'vigor', 'regen',
+                    'heal_from_regen', 'hits_from_regen',
+                    'dist', 'quick', 'alac', 'swift', 'speed',
+                    'dmg_taken_total', 'dmg_taken_hp_lost',
+                    'dmg_taken_absorbed', 'deaths', 'stripped',
+                    'chaos_aura', 'fire_aura', 'dark_aura', 'frost_aura',
+                    'light_aura', 'magnetic_aura', 'shocking_aura',
+                    'big_boomer', 'explosive_temper', 'explosive_entrance',
+                    'med_kit']
 
 # How many players will be listed who achieved top stats most often for each stat?
-num_players_listed = {'dmg': 1000, 'rips': 1000, 'stab': 1000, 'prot': 1000, 'aegis': 1000, 'might': 1000, 'fury': 1000, 'cleanses': 1000, 'heal': 1000, 'barrier': 1000, 'dist': 1000, 'dmg_taken': 1000, 'deaths': 1000}
-# How many players are considered to be "top" in each fight for each stat?
-num_players_considered_top = {'dmg': 5, 'rips': 3, 'stab': 3, 'prot': 3, 'aegis': 3, 'might': 3, 'fury': 3, 'cleanses': 3, 'heal': 3, 'barrier': 3, 'dist': 5, 'dmg_taken': 5, 'deaths': 1}
+num_players_listed_default = 1000
+#num_players_listed = {}
 
+# How many players are considered to be "top" in each fight for each stat?
+num_players_considered_top_default = 5
+num_players_considered_top = {'strips': 3, 'stab': 3, 'prot': 3, 'aegis': 3, 'resist': 3, 'regen': 3, 'heal_from_regen': 3,
+                              'hits_from_regen': 3, 'might': 3, 'fury': 3, 'quick': 3, 'alac': 3, 'speed': 3, 'cleanses': 3,
+                              'heal': 3, 'barrier': 3, 'deaths': 1}
+
+relevant_classes_for_stat = {
+    'dmg_total': ["Dragonhunter", "Willbender", "Herald", "Vindicator", "Berserker", "Holosmith", "Weaver", "Catalyst", "Virtuoso", "Reaper"],
+    'dmg_players': ["Dragonhunter", "Willbender", "Herald", "Vindicator", "Berserker", "Holosmith", "Weaver", "Catalyst", "Virtuoso", "Reaper"],
+    'dmg_other': ["Dragonhunter", "Willbender", "Herald", "Vindicator", "Berserker", "Holosmith", "Weaver", "Catalyst", "Virtuoso", "Reaper"],
+    'spike_dmg': ["Dragonhunter", "Willbender", "Herald", "Vindicator", "Berserker", "Holosmith", "Weaver", "Catalyst", "Virtuoso", "Reaper"],
+    'kills': ["Dragonhunter", "Willbender", "Herald", "Vindicator", "Berserker", "Holosmith", "Weaver", "Catalyst", "Virtuoso", "Reaper"],
+    'downs': ["Dragonhunter", "Willbender", "Herald", "Vindicator", "Berserker", "Holosmith", "Weaver", "Catalyst", "Virtuoso", "Reaper"],
+    'down_contrib': ["Dragonhunter", "Willbender", "Herald", "Vindicator", "Berserker", "Holosmith", "Weaver", "Catalyst", "Virtuoso", "Reaper"],
+    'strips': ["Chronomancer", "Virtuoso", "Reaper", "Scourge"],
+    'interrupts': ["Firebrand", "Chronomancer"],
+    'cleanses': ["Vindicator", "Scrapper", "Druid", "Tempest"],
+    'heal_total': ["Vindicator", "Scrapper", "Druid", "Tempest"],
+    'heal_players': ["Vindicator", "Scrapper", "Druid", "Tempest"],
+    'heal_other': ["Vindicator", "Scrapper", "Druid", "Tempest"],
+    'dist': ["Guardian", "Dragonhunter", "Firebrand", "Willbender", "Revenant", "Renegade", "Herald", "Vindicator", "Warrior", "Berserker", "Spellbreaker", "Bladesworn",  "Engineer", "Scrapper", "Holosmith", "Mechanist",  "Ranger", "Druid", "Soulbeast", "Untamed",  "Thief", "Daredevil", "Deadeye", "Specter",  "Elementalist", "Tempest",  "Weaver", "Catalyst",  "Mesmer", "Chronomancer", "Mirage", "Virtuoso",  "Necromancer", "Reaper", "Scourge", "Harbinger"],
+    'stab': ["Firebrand", "Vindicator"],
+    'prot': ["Firebrand", "Scrapper", "Druid", "Tempest"],
+    'aegis': ["Firebrand"],
+    'resist': ["Firebrand"],
+    'regen': ["Vindicator", "Scrapper", "Druid", "Tempest"],
+    'heal_from_regen': ["Vindicator", "Scrapper", "Druid", "Tempest"],
+    'hits_from_regen': ["Vindicator", "Scrapper", "Druid", "Tempest"],
+    'might': ["Firebrand", "Scrapper", "Tempest",  "Weaver", "Catalyst"],
+    'fury': [],
+    'quick': ["Firebrand", "Chronomancer", "Virtuoso"],
+    'alac': ["Chronomancer", "Virtuoso", "Scourge"],
+    'resolution': [],
+    'swift': [],
+    'vigor': [],
+    'speed': ["Scrapper", "Druid", "Tempest",  "Weaver", "Catalyst"],
+    'barrier': ["Scourge"],
+    'dmg_taken_total': ["Guardian", "Dragonhunter", "Firebrand", "Willbender", "Revenant", "Renegade", "Herald", "Vindicator", "Warrior", "Berserker", "Spellbreaker", "Bladesworn",  "Engineer", "Scrapper", "Holosmith", "Mechanist",  "Ranger", "Druid", "Soulbeast", "Untamed",  "Thief", "Daredevil", "Deadeye", "Specter",  "Elementalist", "Tempest",  "Weaver", "Catalyst",  "Mesmer", "Chronomancer", "Mirage", "Virtuoso",  "Necromancer", "Reaper", "Scourge", "Harbinger"],
+    'dmg_taken_hp_lost': ["Guardian", "Dragonhunter", "Firebrand", "Willbender", "Revenant", "Renegade", "Herald", "Vindicator", "Warrior", "Berserker", "Spellbreaker", "Bladesworn",  "Engineer", "Scrapper", "Holosmith", "Mechanist",  "Ranger", "Druid", "Soulbeast", "Untamed",  "Thief", "Daredevil", "Deadeye", "Specter",  "Elementalist", "Tempest",  "Weaver", "Catalyst",  "Mesmer", "Chronomancer", "Mirage", "Virtuoso",  "Necromancer", "Reaper", "Scourge", "Harbinger"],
+    'dmg_taken_absorbed': ["Guardian", "Dragonhunter", "Firebrand", "Willbender", "Revenant", "Renegade", "Herald", "Vindicator", "Warrior", "Berserker", "Spellbreaker", "Bladesworn",  "Engineer", "Scrapper", "Holosmith", "Mechanist",  "Ranger", "Druid", "Soulbeast", "Untamed",  "Thief", "Daredevil", "Deadeye", "Specter",  "Elementalist", "Tempest",  "Weaver", "Catalyst",  "Mesmer", "Chronomancer", "Mirage", "Virtuoso",  "Necromancer", "Reaper", "Scourge", "Harbinger"],
+    'deaths': ["Guardian", "Dragonhunter", "Firebrand", "Willbender", "Revenant", "Renegade", "Herald", "Vindicator", "Warrior", "Berserker", "Spellbreaker", "Bladesworn",  "Engineer", "Scrapper", "Holosmith", "Mechanist",  "Ranger", "Druid", "Soulbeast", "Untamed",  "Thief", "Daredevil", "Deadeye", "Specter",  "Elementalist", "Tempest",  "Weaver", "Catalyst",  "Mesmer", "Chronomancer", "Mirage", "Virtuoso",  "Necromancer", "Reaper", "Scourge", "Harbinger"],
+    'stripped': ["Guardian", "Dragonhunter", "Firebrand", "Willbender", "Revenant", "Renegade", "Herald", "Vindicator", "Warrior", "Berserker", "Spellbreaker", "Bladesworn",  "Engineer", "Scrapper", "Holosmith", "Mechanist",  "Ranger", "Druid", "Soulbeast", "Untamed",  "Thief", "Daredevil", "Deadeye", "Specter",  "Elementalist", "Tempest",  "Weaver", "Catalyst",  "Mesmer", "Chronomancer", "Mirage", "Virtuoso",  "Necromancer", "Reaper", "Scourge", "Harbinger"],
+    'big_boomer': ["Engineer", "Scrapper", "Holosmith", "Mechanist"],
+    'explosive_temper': ["Engineer", "Scrapper", "Holosmith", "Mechanist"],
+    'explosive_entrance': ["Engineer", "Scrapper", "Holosmith", "Mechanist"],
+    'med_kit': ["Engineer", "Scrapper", "Holosmith", "Mechanist"],
+    'chaos_aura': [],
+    'fire_aura': [],
+    'frost_aura': [],
+    'light_aura': [],
+    'magnetic_aura': [],
+    'shocking_aura': [],
+    'dark_aura': []
+}
+
+# duration_for_averages_default = 'in_combat'
+# the time used for average uptime computation can not be configured here. It is hardcoded to the total duration of the fight.
+duration_for_averages_default = 'total'
+duration_for_averages = {'dist': 'not_running_back'}
+
+# Default column(s) to sort the xls by. valid values are: "account", "name", "profession", "attendance_num", "attendance_duration", "times_top", "percentage_top", "total", and "avg".
+default_sort_xls_by = ['total', 'avg']
+# Individual column(s) per stat to sort the xls by
+sort_xls_by = {'dist': ['avg'], 'big_boomer': ['total'], 'explosive_temper': ['total'], 'explosive_entrance': ['total'], 'med_kit': ['total'],}
 
 # For what portion of all fights does a player need to be there to be considered for "consistency percentage" awards?
 attendance_percentage_for_percentage = 50
-# For what portion of all fights does a player need to be there to be considered for "late but great" awards?
-attendance_percentage_for_late = 50
-# For what portion of all fights does a player need to be there to be considered for "jack of all trades" awards? 
-attendance_percentage_for_buildswap = 30
 # For what portion of all fights does a player need to be there to be considered for "top average" awards? 
-attendance_percentage_for_average = 33
+attendance_percentage_for_average = 25
 
 # What portion of the top total player stat does someone need to reach to be considered for total awards?
 percentage_of_top_for_consistent = 0
@@ -37,10 +117,6 @@ percentage_of_top_for_consistent = 0
 percentage_of_top_for_total = 0
 # What portion of the percentage the top consistent player reached top does someone need to reach to be considered for percentage awards?
 percentage_of_top_for_percentage = 0
-# What portion of the percentage the top consistent player reached top does someone need to reach to be considered for late but great awards?
-percentage_of_top_for_late = 100
-# What portion of the percentage the top consistent player reached top does someone need to reach to be considered for jack of all trades awards?
-percentage_of_top_for_buildswap = 100
 
 # minimum number of allied players to consider a fight in the stats
 min_allied_players = 10
@@ -48,6 +124,9 @@ min_allied_players = 10
 min_fight_duration = 30
 # minimum number of enemies to consider a fight in the stats
 min_enemy_players = 10
+
+# choose which files to write as results and whether to write results to console. Options are 'console', 'txt', 'xls' and 'json'.
+files_to_write = ['xls', 'json']
 
 # names as which each specialization will show up in the stats
 profession_abbreviations = {}
@@ -96,18 +175,108 @@ profession_abbreviations["Reaper"] = "Reaper"
 profession_abbreviations["Scourge"] = "Scourge"
 profession_abbreviations["Harbinger"] = "Harbinger"
 
-# name each stat will be written as
+# name each stat will be written as in the .xls file
 stat_names = {}
-stat_names["dmg"] = "Damage"
-stat_names["rips"] = "Boon Strips"
+stat_names["dmg_total"] = "Total Damage"
+stat_names["dmg_players"] = "Player Damage"
+stat_names["dmg_other"] = "Other Damage"
+stat_names["spike_dmg"] = "Spike Damage"
+stat_names["kills"] = "Kills"
+stat_names["downs"] = "Downs"
+stat_names["down_contrib"] = "Down Contribution"
+stat_names["strips"] = "Boon Strips"
+stat_names["interrupts"] = "Interrupts"
 stat_names["stab"] = "Stability Output"
 stat_names["prot"] = "Protection Output"
 stat_names["aegis"] = "Aegis Output"
+stat_names["resist"] = "Resistance Output"
+stat_names["regen"] = "Regeneration Output"
+stat_names["heal_from_regen"] = "Healing from Regeneration"
+stat_names["hits_from_regen"] = "Hits with Regeneration"
 stat_names["might"] = "Might Output"
 stat_names["fury"] = "Fury Output"
+stat_names["alac"] = "Alacrity Output"
+stat_names["quick"] = "Quickness Output"
+stat_names["speed"] = "Superspeed Output"
 stat_names["cleanses"] = "Condition Cleanses"
-stat_names["heal"] = "Healing"
+stat_names["heal_total"] = "Total Healing"
+stat_names["heal_players"] = "Player Healing"
+stat_names["heal_other"] = "Other Healing"
 stat_names["barrier"] = "Barrier"
 stat_names["dist"] = "Distance to Tag"
-stat_names["dmg_taken"] = "Damage Taken"
+stat_names["dmg_taken_total"] = "Total Damage Taken"
+stat_names["dmg_taken_hp_lost"] = "HP lost"
+stat_names["dmg_taken_absorbed"] = "Damage absorbed"
 stat_names["deaths"] = "Deaths"
+stat_names["stripped"] = "Incoming Strips"
+stat_names["big_boomer"] = "Big Boomer"
+stat_names["explosive_temper"] = "Explosive Temper"
+stat_names["explosive_entrance"] = "Explosive Entrance"
+stat_names["med_kit"] = "Med Kit"
+stat_names["resolution"] = "Resolution Output"
+stat_names["swift"] = "Swiftness Output"
+stat_names["vigor"] = "Vigor Output"
+stat_names["chaos_aura"] = "Chaos Aura Uptime"
+stat_names["fire_aura"] = "Fire Aura Uptime"
+stat_names["frost_aura"] = "Frost Aura Uptime"
+stat_names["light_aura"] = "Light Aura Uptime"
+stat_names["magnetic_aura"] = "Magnetic Aura Uptime"
+stat_names["shocking_aura"] = "Shocking Aura Uptime"
+stat_names["dark_aura"] = "Dark Aura Uptime"
+
+# description for each stat to be written as in the .xls file
+stat_descriptions = {}
+stat_descriptions["dmg_total"] = "Total Damage dealt to everything"
+stat_descriptions["dmg_players"] = "Damage dealt to enemy players"
+stat_descriptions["dmg_other"] = "Damage dealt to siege, gates, npcs, pets,..."
+stat_descriptions["spike_dmg"] = "Spike Damage (Maximum damage dealt to players within 1s)"
+stat_descriptions["kills"] = "Number of killing hits"
+stat_descriptions["downs"] = "Number of downing hits"
+stat_descriptions["down_contrib"] = "Damage done to downstates"
+stat_descriptions["strips"] = "Boon Strips"
+stat_descriptions["interrupts"] = "Number of hits that interrupted an enemy"
+stat_descriptions["stab"] = "Stability Output (Squad Generation, excluding self)"
+stat_descriptions["prot"] = "Protection Output (Squad Generation, excluding self)"
+stat_descriptions["aegis"] = "Aegis Output (Squad Generation, excluding self)"
+stat_descriptions["resist"] = "Resistance Output (Squad Generation, excluding self)"
+stat_descriptions["regen"] = "Regeneration Output"
+stat_descriptions["heal_from_regen"] = "Healing from Regeneration"
+stat_descriptions["hits_from_regen"] = "Regeneration ticks"
+stat_descriptions["might"] = "Might Output (Squad Generation, excluding self)"
+stat_descriptions["fury"] = "Fury Output (Squad Generation, excluding self)"
+stat_descriptions["alac"] = "Alacrity Output (Squad Generation, excluding self)"
+stat_descriptions["quick"] = "Quickness Output (Squad Generation, excluding self)"
+stat_descriptions["speed"] = "Superspeed Output (Squad Generation, excluding self)"
+stat_descriptions["cleanses"] = "Condition Cleanses"
+stat_descriptions["heal_total"] = "Total Healing (only shown if player has the healing addon installed)"
+stat_descriptions["heal_players"] = "Healing on players (only shown if player has the healing addon installed)"
+stat_descriptions["heal_other"] = "Healing on pets, npcs, ... (only shown if player has the healing addon installed)"
+stat_descriptions["barrier"] = "Barrier(only shown if player has the healing addon installed)"
+stat_descriptions["dist"] = "Distance to Tag"
+stat_descriptions["dmg_taken_total"] = "Total Damage Taken (includes damage absorbed by barrier)"
+stat_descriptions["dmg_taken_hp_lost"] = "HP lost"
+stat_descriptions["dmg_taken_absorbed"] = "Damage absorbed by barrier"
+stat_descriptions["deaths"] = "Deaths"
+stat_descriptions["stripped"] = "Incoming Strips"
+stat_descriptions["big_boomer"] = "Big Boomer"
+stat_descriptions["explosive_temper"] = "Explosive Temper"
+stat_descriptions["explosive_entrance"] = "Explosive Entrance"
+stat_descriptions["med_kit"] = "Med Kit"
+stat_descriptions["resolution"] = "Resolution Output (Squad Generation, excluding self)"
+stat_descriptions["swift"] = "Swiftness Output (Squad Generation, excluding self)"
+stat_descriptions["vigor"] = "Vigor Output (Squad Generation, excluding self)"
+stat_descriptions["chaos_aura"] = "Chaos Aura Uptime"
+stat_descriptions["fire_aura"] = "Fire Aura Uptime"
+stat_descriptions["frost_aura"] = "Frost Aura Uptime"
+stat_descriptions["light_aura"] = "Light Aura Uptime"
+stat_descriptions["magnetic_aura"] = "Magnetic Aura Uptime"
+stat_descriptions["shocking_aura"] = "Shocking Aura Uptime"
+stat_descriptions["dark_aura"] = "Dark Aura Uptime"
+
+# TODO move this somewhere else as "fixed"?
+xls_column_names = {}
+xls_column_names['account'] = "Account"
+xls_column_names['name'] = "Name"
+xls_column_names['profession'] = "Profession"
+xls_column_names['attendance_num'] = "Attendance (number of fights)"
+xls_column_names['attendance_duration'] = "Attendance (duration present)"
