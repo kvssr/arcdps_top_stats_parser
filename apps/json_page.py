@@ -25,7 +25,7 @@ def flask_logger():
                 yield line
 
         
-@app.route('/status/<task_id>')
+@app.route('/server/gwlogparser/status/<task_id>')
 def taskstatus(task_id):
     task = get_json_data.AsyncResult(task_id)
     if task.state == 'PENDING':
@@ -55,12 +55,12 @@ def taskstatus(task_id):
         }
     return jsonify(response)
 
-@app.route('/log-stream', methods=['GET'])
+@app.route('/server/gwlogparser/log-stream', methods=['GET'])
 def log_stream():
     return Response(flask_logger(), mimetype="text/plain", content_type="text/event-stream")
 
 
-@app.route('/json', methods=['POST'])
+@app.route('/server/gwlogparser/json', methods=['POST'])
 def retrieve_data():
     if request.method == 'POST':
         if 'links' in request.json:
@@ -74,7 +74,8 @@ def retrieve_data():
                 log.info(f'{datetime.now()} || DONE PROCESSING DATA ')
                 print('Sending back data')
                 print('Task', task.id)
-                return jsonify({}), 202, {'Location': url_for('taskstatus',
+                return jsonify({'Location': url_for('taskstatus',
+                                                  task_id=task.id)}), 202, {'Location': url_for('taskstatus',
                                                   task_id=task.id)}
             except Exception as e:
                 log.error(f'{datetime.now()} || ERROR ')
