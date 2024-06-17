@@ -478,7 +478,7 @@ def compute_avg_values(players, fights, config):
 
 
 
-def get_stats_from_json_data(json_data, players, player_index, account_index, fights, config, found_all_buff_ids, found_healing, found_barrier, log, filename):
+def get_stats_from_json_data(json_data, players, player_index, account_index, fights, config, found_all_buff_ids, found_healing, found_barrier, log):
     # get fight stats
     fight = get_stats_from_fight_json(json_data, config, log)
             
@@ -636,7 +636,7 @@ def collect_stat_data(json_links, config, log, anonymize=False):
 
     if (not fights) or all(fight.skipped for fight in fights):
         # list of fights is empty or all were skipped -> no valid fights were found
-        myprint(log, "\n No valid fights were found in "+args.input_directory, "info")
+        # myprint(log, "\n No valid fights were found in "+args.input_directory, "info")
         return None, None, None, None
 
     get_overall_stats(players, fights, config)
