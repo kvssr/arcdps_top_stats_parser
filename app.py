@@ -4,7 +4,7 @@ from flask import Flask
 from celery import Celery
 #from apps import json_page
 from dotenv import load_dotenv
-import apps
+from flask_cors import CORS
 
 load_dotenv()
 
@@ -13,8 +13,9 @@ logging.basicConfig(filename='app.log', level=logging.INFO)
 
 
 app = Flask(__name__)
-app.config['CELERY_BROKER_URL'] = os.getenv('CELERY_BROKER_URL','')
-app.config['CELERY_RESULT_BACKEND'] = os.getenv('CELERY_RESULT_BACKEND','')
+app.config['celery_broker_url'] = os.getenv('celery_broker_url','')
+app.config['celery_result_backend'] = os.getenv('celery_result_backend','')
 
-celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'], backend=app.config['CELERY_RESULT_BACKEND'], include=['apps.json_page'])
+CORS(app)
+celery = Celery(app.name, broker=app.config['celery_broker_url'], backend=app.config['celery_result_backend'], include=['apps.json_page'])
 celery.conf.update(app.config)

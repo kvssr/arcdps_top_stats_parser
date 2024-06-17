@@ -112,7 +112,7 @@ class Config:
 
     
 # fills a Config with the given input    
-def fill_config(config_input, log):
+def fill_config(config_input):
     config = Config()
     if hasattr(config_input, "num_players_listed"):
         config.num_players_listed = config_input.num_players_listed
