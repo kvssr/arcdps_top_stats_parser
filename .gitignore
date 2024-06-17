@@ -8,5 +8,3 @@ cache
 .venv
 *.log
 .env
-
-*.log
