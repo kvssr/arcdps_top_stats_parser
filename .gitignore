@@ -5,6 +5,7 @@ __pycache__
 *.pyc
 venv
 cache
-.venv
 *.log
 .env
+app.log
+json.log
