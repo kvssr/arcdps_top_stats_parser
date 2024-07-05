@@ -143,7 +143,8 @@ def get_basic_player_data_from_json(player_json):
     account = player_json['account']
     name = player_json['name']
     profession = player_json['profession']
-    return account, name, profession
+    not_in_squad = player_json['notInSquad']
+    return account, name, profession, not_in_squad
 
 
 
@@ -473,10 +474,11 @@ def get_stat_from_player_json(player_json, stat, fight, player_duration_present,
     ################
 
     if stat == 'interrupts':
-        if 'statsAll' not in player_json or len(player_json['statsAll']) != 1 or 'interrupts' not in player_json['statsAll'][0]:
-            config.errors.append("Could not find statsAll or an entry for interrupts in json to determine interrupts.")
+        if 'statsTargets' not in player_json or len(player_json['statsTargets']) == 0:
+            config.errors.append("Could not find statsTargets in json to determine player interrupts.")
             return -1
-        return int(player_json['statsAll'][0]['interrupts'])
+        interrupts = sum([stats[0][stat] for stats in player_json['statsTargets']])
+        return interrupts
     
     ######################
     ### Heal & Barrier ###
