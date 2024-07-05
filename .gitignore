@@ -9,3 +9,4 @@ cache
 .env
 app.log
 json.log
+apps/webhook.py
