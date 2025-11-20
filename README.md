@@ -16,6 +16,7 @@ Currently supported stats are:
 - killing hits
 - downing hits
 - damage against downed players
+- down contribution
 - boon rips
 - interrupts
 - cleanses
@@ -39,6 +40,7 @@ Currently supported stats are:
 - healing dealt to everything else (in wvw: npcs, pets, ...)
 - healing from regen
 - barrier output
+- resurrects
 - average distance to tag
 - stripped boons (boons that were stripped from the player)
 - total damage taken

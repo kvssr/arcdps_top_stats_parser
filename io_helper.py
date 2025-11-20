@@ -99,8 +99,6 @@ def write_stats_xls(players, top_players, stat, xls_output_filename, config):
     book = writer.book
     sheet = book[config.stat_names[stat]]
     bold = Font(bold=True)
-    bold_red = Font(bold=True, color='FF0000')
-    bold_green = Font(bold=True, color='006400')
     sheet['A1'] = config.stat_descriptions[stat]
     sheet['A1'].font = bold
 
@@ -128,13 +126,15 @@ def write_stats_xls(players, top_players, stat, xls_output_filename, config):
         header_cell = sheet.cell(row=3, column=(i+1))
         header_cell.value = column_names[i]
         header_cell.font = bold
-
+        header_cell.alignment = header_cell.alignment.copy(wrapText=True)
+        header_cell.alignment = header_cell.alignment.copy(vertical="top")
 
     # adjust the width of the columns
-    dim_holder = DimensionHolder(worksheet=sheet)
-    for col in range(sheet.min_column, sheet.max_column + 1):
-        dim_holder[get_column_letter(col)] = ColumnDimension(sheet, min=col, max=col, width=21)
-    sheet.column_dimensions = dim_holder
+    for col in sheet.columns:
+        length = max((len(str(cell.value)) for cell in col[4:]), default = 9)
+        sheet.column_dimensions[col[0].column_letter].width = max(length + 3, 12)
+        for cell in col:
+            cell.alignment = cell.alignment.copy(horizontal="left")
 
     # make relevant classes bold
     (max_row, max_col) = df.shape
@@ -276,8 +276,8 @@ def create_panda_dataframe(players, top_players, stat, sorting_columns, sort_asc
     accounts = (players[top_players[i]].account for i in range(len(top_players)))
     names = (players[top_players[i]].name for i in range(len(top_players)))
     professions = (players[top_players[i]].profession for i in range(len(top_players)))
-    num_fights_present = (players[top_players[i]].num_fights_present for i in range(len(top_players)))
-    duration_present = (players[top_players[i]].duration_present[config.duration_for_averages[stat]] for i in range(len(top_players)))
+    num_fights_present = (players[top_players[i]].num_fights_present[stat] for i in range(len(top_players)))
+    duration_present = (players[top_players[i]].duration_present[stat] for i in range(len(top_players)))
     consistency_stats = (players[top_players[i]].consistency_stats[stat] for i in range(len(top_players)))
     portion_top_stats = (players[top_players[i]].portion_top_stats[stat]*100 for i in range(len(top_players)))
     total_stats = list()
@@ -291,11 +291,17 @@ def create_panda_dataframe(players, top_players, stat, sorting_columns, sort_asc
     uptime_stats = list()
     if stat in config.squad_buff_abbrev.values():
         uptime_stats = (players[top_players[i]].total_stats[stat]['uptime'] for i in range(len(top_players)))
+    fights_present = list()
+    groups = list()
+    for i in range(len(top_players)):
+        fights_present.append((fight_number for fight_number in range(len(players[top_players[i]].stats_per_fight)) if players[top_players[i]].stats_per_fight[fight_number]['present_in_fight']))
+        groups.append(",".join(list(set(str(players[top_players[i]].stats_per_fight[fight_number]['group']) for fight_number in fights_present[i]))))
     data = {"account": accounts,
             "name": names,
             "profession": professions,
             "attendance_num": num_fights_present,
             "attendance_duration": duration_present,
+            "groups": groups,
             "times_top": consistency_stats,
             "percentage_top": portion_top_stats,
             "total": total_stats}
